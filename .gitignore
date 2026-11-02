@@ -1,0 +1,16 @@
+# Datei: .gitignore – in VS Code einfügen und speichern
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# MLflow: lokale Tracking-Daten
+mlflow.db
+mlruns/
+mlartifacts/
+
+# Geheimnisse
+.env
+
+# Editor
+.vscode/

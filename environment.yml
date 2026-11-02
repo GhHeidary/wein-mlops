@@ -1,0 +1,39 @@
+# environment.yml
+# Conda-Umgebung fuer den IfaDW-Kurs MLOps (AI Engineer)
+#
+# Stand: Tag 6 (Experiment Tracking mit MLflow)
+# Getestet am 30.10.2026 mit conda 26.9 (Miniforge) unter Linux, Python 3.12.16.
+#
+# Anlegen:        conda env create -f environment.yml
+# Aktivieren:     conda activate mlops-kurs
+# Aktualisieren:  conda env update -f environment.yml --prune
+#
+# Hinweis: Wir nutzen nur den Kanal conda-forge.
+# Die System-Python-Installation von Linux Mint bleibt unveraendert.
+# Weitere Pakete fuer spaetere Unterrichtstage kommen mit einer neuen Version
+# dieser Datei dazu.
+
+name: mlops-kurs
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      # Experiment Tracking und Model Registry
+      - mlflow==3.17.2
+      # Machine Learning und Daten
+      - scikit-learn==1.9.1
+      - pandas==3.1.0
+      - numpy==2.5.4
+      - matplotlib==3.11.2
+      # Jupyter: Kernel fuer VS Code und Jupyter Notebook
+      - ipykernel==7.4.0
+      - notebook==7.6.4
+
+variables:
+  # MLflow sendet sonst anonyme Nutzungsdaten an den Hersteller.
+  # Im Kurs schalten wir das aus.
+  MLFLOW_DISABLE_TELEMETRY: "true"
