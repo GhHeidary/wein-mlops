@@ -1,6 +1,7 @@
 # Datei: src/train_viele.py – in VS Code einfügen und speichern
 # Wir trainieren mehrere Modelle mit verschiedenen Hyperparametern.
 
+import os
 import mlflow
 import mlflow.sklearn
 from sklearn.datasets import load_wine
@@ -8,7 +9,10 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+# Die Adresse kommt aus MLFLOW_TRACKING_URI. Ohne Variable nutzen wir mlflow.db.
+TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+mlflow.set_tracking_uri(TRACKING_URI)
+print(f"Tracking-URI: {TRACKING_URI}")
 mlflow.set_experiment("wein-klassifikation")
 
 VERTRAUTE_TYPEN = ["sklearn.tree._tree.Tree"]

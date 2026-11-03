@@ -1,6 +1,8 @@
 # Datei: src/train.py – in VS Code einfügen und speichern
 # Wir trainieren ein Modell für den Wein-Datensatz und speichern alles in MLflow.
 
+import os
+
 import matplotlib
 matplotlib.use("Agg")  # Wir zeichnen Grafiken ohne Fenster. Das reicht für MLflow.
 import matplotlib.pyplot as plt
@@ -13,8 +15,11 @@ from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 
 # 1. MLflow einrichten
-# Wir speichern die Daten von MLflow in der Datei mlflow.db im Projektordner.
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+# Die Adresse des Tagebuchs kommt aus der Umgebungsvariable MLFLOW_TRACKING_URI.
+# Fehlt sie, schreiben wir wie an Tag 6 in die Datei mlflow.db.
+TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+mlflow.set_tracking_uri(TRACKING_URI)
+print(f"Tracking-URI: {TRACKING_URI}")
 # Alle Läufe dieses Projekts landen im selben Experiment.
 mlflow.set_experiment("wein-klassifikation")
 
