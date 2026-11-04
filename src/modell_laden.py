@@ -1,31 +1,27 @@
 # Datei: src/modell_laden.py – in VS Code einfügen und speichern
-# Wir laden das beste Modell aus MLflow und machen Vorhersagen.
+# Wir laden den Champion aus der Model Registry und machen Vorhersagen.
+
+import os
 
 import mlflow
 import mlflow.sklearn
-from mlflow.tracking import MlflowClient
+from mlflow import MlflowClient
 from sklearn.datasets import load_wine
 from sklearn.model_selection import train_test_split
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
-client = MlflowClient()
+# Die Adresse kommt aus MLFLOW_TRACKING_URI. Ohne Variable nutzen wir mlflow.db.
+TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+mlflow.set_tracking_uri(TRACKING_URI)
+print(f"Tracking-URI: {TRACKING_URI}")
 
-# Zuerst suchen wir den besten Run.
-experiment = client.get_experiment_by_name("wein-klassifikation")
-bester = client.search_runs(
-    experiment_ids=[experiment.experiment_id],
-    order_by=[
-        "metrics.genauigkeit DESC",
-        "metrics.f1_makro DESC",
-        "attributes.start_time DESC",
-    ],
-    max_results=1,
-)[0]
-
-# Jetzt laden wir das Modell über seine Adresse (Model URI).
-modell_uri = f"runs:/{bester.info.run_id}/modell"
+# Wir laden das Modell über Name und Alias – keine Run-ID mehr.
+modell_uri = "models:/wein-klassifikator@champion"
 modell = mlflow.sklearn.load_model(modell_uri)
 print(f"Modell geladen: {modell_uri}")
+
+# Welche Version steckt gerade hinter @champion?
+champion = MlflowClient().get_model_version_by_alias("wein-klassifikator", "champion")
+print(f"Das ist Version {champion.version}")
 
 # Wir nehmen dieselben Testdaten wie beim Training.
 daten = load_wine(as_frame=True)
