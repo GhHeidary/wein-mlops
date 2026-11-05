@@ -1,8 +1,9 @@
-# environment.yml
+# Datei: environment.yml – in VS Code einfügen und speichern
 # Conda-Umgebung fuer den IfaDW-Kurs MLOps (AI Engineer)
 #
-# Stand: Tag 6 (Experiment Tracking mit MLflow)
+# Stand: Tag 9 (neu: DVC)
 # Getestet am 30.10.2026 mit conda 26.9 (Miniforge) unter Linux, Python 3.12.16.
+# DVC ergaenzt und getestet am 04.11.2026.
 #
 # Anlegen:        conda env create -f environment.yml
 # Aktivieren:     conda activate mlops-kurs
@@ -32,8 +33,12 @@ dependencies:
       # Jupyter: Kernel fuer VS Code und Jupyter Notebook
       - ipykernel==7.4.0
       - notebook==7.6.4
+      # Daten versionieren und Pipelines (ab Tag 9)
+      - dvc==3.67.1
 
 variables:
   # MLflow sendet sonst anonyme Nutzungsdaten an den Hersteller.
   # Im Kurs schalten wir das aus.
   MLFLOW_DISABLE_TELEMETRY: "true"
+  # DVC sendet sonst anonyme Nutzungsdaten. Auch das schalten wir aus.
+  DVC_NO_ANALYTICS: "1"
