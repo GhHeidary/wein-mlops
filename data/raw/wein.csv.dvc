@@ -1,0 +1,5 @@
+outs:
+- md5: 70aab81e2f774225575fd56b199234ea
+  size: 10354
+  hash: md5
+  path: wein.csv
