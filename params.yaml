@@ -1,0 +1,11 @@
+# Datei: params.yaml – in VS Code einfügen und speichern
+# Parameter der Pipeline. Ändern wir hier etwas, führt dvc repro nur die betroffenen Stufen neu aus.
+
+vorbereiten:
+  test_size: 0.2
+  random_state: 42
+
+trainieren:
+  n_estimators: 10
+  max_depth: 3
+  random_state: 42

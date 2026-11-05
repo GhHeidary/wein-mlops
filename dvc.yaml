@@ -1,0 +1,43 @@
+# Datei: dvc.yaml – in VS Code einfügen und speichern
+# Unsere Pipeline: validieren -> vorbereiten -> trainieren -> bewerten
+
+stages:
+  validieren:
+    cmd: python src/pipeline/validieren.py
+    deps:
+      - src/pipeline/validieren.py
+      - data/raw/wein.csv
+    outs:
+      - reports/validierung.json:
+          cache: false
+
+  vorbereiten:
+    cmd: python src/pipeline/vorbereiten.py
+    deps:
+      - src/pipeline/vorbereiten.py
+      - data/raw/wein.csv
+      - reports/validierung.json
+    params:
+      - vorbereiten
+    outs:
+      - data/prepared
+
+  trainieren:
+    cmd: python src/pipeline/trainieren.py
+    deps:
+      - src/pipeline/trainieren.py
+      - data/prepared/train.csv
+    params:
+      - trainieren
+    outs:
+      - models/modell.joblib
+
+  bewerten:
+    cmd: python src/pipeline/bewerten.py
+    deps:
+      - src/pipeline/bewerten.py
+      - data/prepared/test.csv
+      - models/modell.joblib
+    metrics:
+      - metrics.json:
+          cache: false

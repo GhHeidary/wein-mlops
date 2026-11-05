@@ -1,0 +1,86 @@
+schema: '2.0'
+stages:
+  validieren:
+    cmd: python src/pipeline/validieren.py
+    deps:
+    - path: data/raw/wein.csv
+      hash: md5
+      md5: 2e068a68b1700c3e68393fa0995cedf8
+      size: 12261
+    - path: src/pipeline/validieren.py
+      hash: md5
+      md5: c67d0a4a49bfa1711f428342f325044c
+      size: 2065
+    outs:
+    - path: reports/validierung.json
+      hash: md5
+      md5: 61de95643d4d35b128fe16711379867f
+      size: 67
+  vorbereiten:
+    cmd: python src/pipeline/vorbereiten.py
+    deps:
+    - path: data/raw/wein.csv
+      hash: md5
+      md5: 2e068a68b1700c3e68393fa0995cedf8
+      size: 12261
+    - path: reports/validierung.json
+      hash: md5
+      md5: 61de95643d4d35b128fe16711379867f
+      size: 67
+    - path: src/pipeline/vorbereiten.py
+      hash: md5
+      md5: 9a901a3e5e178915d3267d24602e6fe8
+      size: 815
+    params:
+      params.yaml:
+        vorbereiten:
+          test_size: 0.2
+          random_state: 42
+    outs:
+    - path: data/prepared
+      hash: md5
+      md5: 97c104f1d134fd55ff8dedd916400040.dir
+      size: 12438
+      nfiles: 2
+  trainieren:
+    cmd: python src/pipeline/trainieren.py
+    deps:
+    - path: data/prepared/train.csv
+      hash: md5
+      md5: 173dc23efac53db8903caf37be9dc8a5
+      size: 9824
+    - path: src/pipeline/trainieren.py
+      hash: md5
+      md5: f548a429fdade71d028f41e375617be8
+      size: 900
+    params:
+      params.yaml:
+        trainieren:
+          n_estimators: 10
+          max_depth: 3
+          random_state: 42
+    outs:
+    - path: models/modell.joblib
+      hash: md5
+      md5: e99315b0d30102678b01cc8f927ed1a9
+      size: 16017
+  bewerten:
+    cmd: python src/pipeline/bewerten.py
+    deps:
+    - path: data/prepared/test.csv
+      hash: md5
+      md5: d0cb1cdcf27d4fef08693b6c1ea81c6d
+      size: 2614
+    - path: models/modell.joblib
+      hash: md5
+      md5: e99315b0d30102678b01cc8f927ed1a9
+      size: 16017
+    - path: src/pipeline/bewerten.py
+      hash: md5
+      md5: ad16be1d7fa17d1edd0d3269fa8e683b
+      size: 912
+    outs:
+    - path: metrics.json
+      hash: md5
+      md5: bfd722e7c57049792c57c8d743111e36
+      size: 64
