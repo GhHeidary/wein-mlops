@@ -40,3 +40,27 @@ API testen:
 Rollback auf eine ältere Version (danach die API neu starten):
 
     python src/alias_setzen.py <version>
+
+## Daten und Pipeline mit DVC (ab Tag 9)
+
+Daten vom DVC-Remote holen (nach einem neuen Klon):
+
+    dvc pull
+
+Pipeline ausführen (validieren, vorbereiten, trainieren, bewerten):
+
+    dvc repro
+    dvc metrics show
+
+Parameter stehen in `params.yaml`. Nach einer Änderung:
+
+    dvc repro
+    dvc params diff
+    dvc metrics diff
+
+Neue Datenversion speichern:
+
+    dvc add data/raw/wein.csv
+    git add data/raw/wein.csv.dvc
+    git commit -m "Neue Datenversion"
+    dvc push
