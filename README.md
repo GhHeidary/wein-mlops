@@ -1,5 +1,7 @@
 # wein-mlops
 
+![CI](https://github.com/DEIN_NAME/wein-mlops/actions/workflows/ci.yml/badge.svg)
+
 Kursprojekt im Modul MLOps (IfaDW): Klassifikation von Weinen mit dem
 Wine-Datensatz aus scikit-learn.
 
@@ -65,11 +67,18 @@ Neue Datenversion speichern:
     git commit -m "Neue Datenversion"
     dvc push
 
-## Tests (ab Tag 10)
+## Tests und CI (ab Tag 10)
 
 Tests lokal ausführen:
 
     pytest -v
 
-Die Tests laufen auch automatisch bei jedem Push und Pull Request auf `main`
-(GitHub Actions, Datei `.github/workflows/ci.yml`). Ergebnis: Tab **Actions** auf GitHub.
+GitHub Actions (Datei `.github/workflows/ci.yml`, ab Tag 11 erweitert):
+
+- startet bei jedem Push und Pull Request auf `main`, von Hand und jeden Montag um 06:17 Uhr
+- Job `tests`: Tests mit Python 3.12, 3.13 und 3.14 (Matrix), Pakete aus dem Cache
+- Job `datenpruefung`: erst nach grünen Tests; erzeugt `data/raw/wein.csv` und validiert sie
+- Artefakt `validierungsbericht` (`reports/validierung.json`), 7 Tage zum Download
+
+Ergebnis: Tab **Actions** auf GitHub. Den geplanten Lauf abschalten:
+**Actions** → **CI** → **⋯** → **Disable workflow**.
