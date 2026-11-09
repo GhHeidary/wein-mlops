@@ -1,5 +1,5 @@
 # Datei: .github/workflows/ci.yml – in VS Code einfügen und speichern
-# Continuous Integration: Zuerst die Tests (drei Python-Versionen), danach die Datenprüfung.
+# Continuous Integration: Zuerst die Tests (drei Python-Versionen), danach die Datenprüfung mit Bericht.
 
 name: CI
 
@@ -61,3 +61,10 @@ jobs:
 
       - name: Daten validieren
         run: python src/pipeline/validieren.py
+
+      - name: Bericht hochladen
+        uses: actions/upload-artifact@v7
+        with:
+          name: validierungsbericht
+          path: reports/validierung.json
+          retention-days: 7
