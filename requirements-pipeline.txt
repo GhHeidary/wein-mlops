@@ -1,0 +1,6 @@
+# Datei: requirements-pipeline.txt – in VS Code einfügen und speichern
+# Pakete für den Workflow pipeline.yml (ab Tag 12).
+# Wir nehmen alle Pakete aus requirements-ci.txt und ergänzen DVC.
+# Die Version von DVC ist dieselbe wie in environment.yml.
+-r requirements-ci.txt
+dvc==3.67.1

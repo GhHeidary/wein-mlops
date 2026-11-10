@@ -1,0 +1,52 @@
+# Datei: .github/workflows/pipeline.yml – in VS Code einfügen und speichern
+# Orchestrierung: Die DVC-Pipeline läuft auf GitHub – einmal pro Woche und von Hand.
+# Kein Push-Trigger: Bei jedem Push läuft weiter nur ci.yml.
+
+name: Pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Jeden Montag um 06:47 Uhr deutscher Zeit (30 Minuten nach CI)
+    - cron: "47 6 * * 1"
+      timezone: "Europe/Berlin"
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    env:
+      # DVC soll keine Nutzungsdaten senden (wie in environment.yml).
+      DVC_NO_ANALYTICS: "1"
+    steps:
+      - name: Code holen
+        uses: actions/checkout@v7
+
+      - name: Python 3.12 einrichten
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-pipeline.txt
+
+      - name: Pakete installieren
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Rohdaten erzeugen
+        # Den DVC-Speicher gibt es nur auf unserem Rechner.
+        # Das Skript erzeugt genau dieselbe Datei (gleicher Hash).
+        run: python src/daten_exportieren.py
+
+      - name: Pipeline ausführen
+        # --force: alle Stufen wirklich neu rechnen,
+        # auch die, deren Ergebnis schon in Git liegt.
+        run: dvc repro --force
+
+      - name: Reproduzierbarkeit prüfen
+        # Gleiche Daten + gleicher Code + gleiche Parameter = gleiches Ergebnis?
+        # Jede Abweichung von unserem Commit macht diesen Schritt rot.
+        run: git diff --exit-code dvc.lock metrics.json reports/validierung.json
+
+      - name: Ergebnis in die Zusammenfassung
+        run: |
+          echo "## Ergebnis der Pipeline" >> "$GITHUB_STEP_SUMMARY"
+          dvc metrics show --md >> "$GITHUB_STEP_SUMMARY"
