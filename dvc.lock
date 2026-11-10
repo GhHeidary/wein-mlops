@@ -77,8 +77,8 @@ stages:
       size: 16017
     - path: src/pipeline/bewerten.py
       hash: md5
-      md5: ad16be1d7fa17d1edd0d3269fa8e683b
-      size: 912
+      md5: 07497209870c1fd809e8040ea5134267
+      size: 2780
     outs:
     - path: metrics.json
       hash: md5
