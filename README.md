@@ -82,3 +82,25 @@ GitHub Actions (Datei `.github/workflows/ci.yml`, ab Tag 11 erweitert):
 
 Ergebnis: Tab **Actions** auf GitHub. Den geplanten Lauf abschalten:
 **Actions** → **CI** → **⋯** → **Disable workflow**.
+## Orchestrierung und Experimente (ab Tag 12)
+
+Prüfen, was neu laufen würde (ohne etwas zu starten):
+
+    dvc status
+    dvc repro --dry
+
+Experimente ohne Commit (`--temp`: der Arbeitsordner bleibt unverändert):
+
+    dvc exp run --temp -n baeume-50 -S trainieren.n_estimators=50
+    dvc exp show --only-changed --md | cat
+    dvc exp apply baeume-50
+
+Workflow `.github/workflows/pipeline.yml`:
+
+- startet von Hand (**Run workflow**) und jeden Montag um 06:47 Uhr
+- erzeugt die Rohdaten, führt `dvc repro --force` aus
+- prüft die Reproduzierbarkeit (`dvc.lock` und `metrics.json` unverändert)
+- schreibt die Metriken in die Zusammenfassung des Runs
+
+Optional: Ist `MLFLOW_TRACKING_URI` gesetzt, speichert `bewerten.py` jeden Lauf
+im MLflow-Experiment `wein-pipeline`.
