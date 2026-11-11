@@ -104,3 +104,19 @@ Workflow `.github/workflows/pipeline.yml`:
 
 Optional: Ist `MLFLOW_TRACKING_URI` gesetzt, speichert `bewerten.py` jeden Lauf
 im MLflow-Experiment `wein-pipeline`.
+```text
+## End-to-End-Automatisierung (ab Tag 13)
+
+Bei jedem Push und Pull Request auf `main` (Workflow `ci.yml`):
+
+1. Job `tests`: Tests mit Python 3.12, 3.13 und 3.14
+2. Job `pipeline` (erst wenn alle Tests grün sind):
+   Rohdaten erzeugen, `dvc repro --force`, Reproduzierbarkeit prüfen,
+   **Quality Gate**, Modell als Artefakt `modell` (7 Tage)
+
+Quality Gate lokal prüfen:
+
+    python src/quality_gate.py
+
+Die Mindestwerte stehen in `params.yaml` unter `quality_gate`.
+```
