@@ -82,6 +82,7 @@ GitHub Actions (Datei `.github/workflows/ci.yml`, ab Tag 11 erweitert):
 
 Ergebnis: Tab **Actions** auf GitHub. Den geplanten Lauf abschalten:
 **Actions** → **CI** → **⋯** → **Disable workflow**.
+
 ## Orchestrierung und Experimente (ab Tag 12)
 
 Prüfen, was neu laufen würde (ohne etwas zu starten):
@@ -104,7 +105,8 @@ Workflow `.github/workflows/pipeline.yml`:
 
 Optional: Ist `MLFLOW_TRACKING_URI` gesetzt, speichert `bewerten.py` jeden Lauf
 im MLflow-Experiment `wein-pipeline`.
-```text
+
+
 ## End-to-End-Automatisierung (ab Tag 13)
 
 Bei jedem Push und Pull Request auf `main` (Workflow `ci.yml`):
@@ -119,4 +121,34 @@ Quality Gate lokal prüfen:
     python src/quality_gate.py
 
 Die Mindestwerte stehen in `params.yaml` unter `quality_gate`.
-```
+
+
+## Modell-API und Batch-Vorhersage (ab Tag 14)
+
+Beide nutzen das Modell der Pipeline: `models/modell.joblib`.
+
+Batch-Vorhersage (viele Weine aus einer CSV-Datei):
+
+    python src/batch_vorhersage.py beispiele/neue_weine.csv
+
+Das Ergebnis steht in `ausgabe/vorhersagen.csv` (nicht in Git).
+
+API starten (im Projektordner):
+
+    uvicorn api.app:app --reload
+
+Dokumentation im Browser: http://127.0.0.1:8000/docs
+
+| Methode | Pfad | Ergebnis |
+|---|---|---|
+| GET | `/health` | `{"status": "ok"}` |
+| GET | `/modell` | Parameter und Metriken des Modells |
+| GET | `/klassen/{nummer}` | Name einer Klasse |
+| GET | `/beispiele?anzahl=2` | Beispielweine |
+| POST | `/vorhersage` | Klasse und Wahrscheinlichkeit für einen Wein |
+
+Beispiel:
+
+    curl -X POST http://127.0.0.1:8000/vorhersage \
+         -H "Content-Type: application/json" \
+         -d @beispiele/wein.json
