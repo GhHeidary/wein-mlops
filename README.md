@@ -152,3 +152,21 @@ Beispiel:
     curl -X POST http://127.0.0.1:8000/vorhersage \
          -H "Content-Type: application/json" \
          -d @beispiele/wein.json
+
+
+## API-Version 0.2.0 und API-Tests (ab Tag 15)
+
+Die API prüft jetzt die Eingaben:
+
+- Jeder Messwert muss in einem erlaubten Bereich liegen (Grenzen aus den Trainingsdaten). Sonst: `422`.
+- Unbekannte Klasse bei `/klassen/{nummer}`: `404`.
+- Leere Liste bei `/vorhersage/batch`: `400`.
+
+Neu: `POST /vorhersage/batch` – mehrere Weine in einer Anfrage.
+
+Tests der API (brauchen `models/modell.joblib`):
+
+    pytest tests/test_api.py -v
+
+In CI laufen die API-Tests im Job `pipeline`, direkt nach dem Quality Gate –
+mit genau dem Modell, das CI gerade gebaut hat.
