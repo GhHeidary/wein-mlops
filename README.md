@@ -191,3 +191,17 @@ CI prüft vorher, dass die Pipeline reproduzierbar ist.
 
 Hinweis: Der kostenlose Service schläft nach 15 Minuten ohne Anfrage ein.
 Die erste Anfrage danach dauert etwa eine Minute.
+
+
+## Docker-Image (ab Tag 17)
+
+Die Wein-API gibt es als Docker-Image. Das `Dockerfile` installiert die Pakete,
+trainiert das Modell mit den Skripten der Pipeline und startet die API als Benutzer `app`.
+
+    docker build -t wein-api:0.3.0 .
+    docker run -d --name wein-api -p 127.0.0.1:8000:8000 wein-api:0.3.0
+    curl http://127.0.0.1:8000/health
+
+Port: Standard 8000. Mit `-e PORT=…` lässt sich ein anderer Port setzen (Render setzt `PORT` selbst).
+
+Auf Render läuft die API als Web-Service mit **Language: Docker** – Render baut das Image aus dem `Dockerfile`.
