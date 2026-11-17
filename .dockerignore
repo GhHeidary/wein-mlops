@@ -1,0 +1,32 @@
+# Datei: .dockerignore – in VS Code einfügen und speichern
+# Diese Dateien und Ordner schickt Docker beim Bauen NICHT mit (ab Tag 17).
+# Das macht den Build schneller und hält Geheimnisse aus dem Image.
+
+# Git und DVC
+.git
+.dvc/cache
+.dvc/tmp
+
+# Daten und Modelle – das Image baut sie selbst
+data/
+models/
+
+# MLflow und Ergebnisse
+mlflow.db
+mlruns/
+mlartifacts/
+ausgabe/
+reports/
+
+# Python und Editor
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+
+# Geheimnisse
+.env
+
+# Backups (Tag 7)
+*.tar.gz
