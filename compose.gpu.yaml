@@ -1,0 +1,14 @@
+# Datei: compose.gpu.yaml – in VS Code einfügen und speichern
+# Zusatz für Rechner mit NVIDIA-Grafikkarte und NVIDIA Container Toolkit.
+# Start mit GPU:  docker compose -f compose.yaml -f compose.gpu.yaml up -d
+# Ohne diese Datei läuft Ollama auf der CPU – langsamer, aber es funktioniert überall.
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

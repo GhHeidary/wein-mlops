@@ -1,0 +1,4 @@
+# Datei: ui/requirements.txt – in VS Code einfügen und speichern
+# Pakete für die Benutzeroberfläche (ab Tag 18). Sie laufen nur im Container wein-ui.
+streamlit==1.67.0
+requests==2.34.2

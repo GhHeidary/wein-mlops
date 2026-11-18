@@ -8,3 +8,5 @@ pytest==9.2.0
 # Für die API-Tests (ab Tag 15): FastAPI und httpx2 für den TestClient.
 fastapi==0.162.0
 httpx2==2.16.0
+# Ab Tag 18: Client für LLMs mit OpenAI-Schnittstelle (Ollama, Groq).
+openai==3.52.0

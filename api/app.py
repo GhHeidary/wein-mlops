@@ -1,5 +1,6 @@
 # Datei: api/app.py – in VS Code einfügen und speichern
-# Unsere Modell-API (Stand Tag 15): Wertebereiche, Beispiel, Fehler, Antwortformat, Batch.
+# Unsere Modell-API (Stand Tag 18): Wertebereiche, Beispiel, Fehler, Antwortformat, Batch
+# und ab Tag 18 eine Erklärung der Vorhersage durch ein LLM (siehe api/llm.py).
 # Start im Projektordner:  uvicorn api.app:app --reload
 
 import json
@@ -11,6 +12,8 @@ import yaml
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from api import llm
+
 KLASSEN = {0: "Sorte 1", 1: "Sorte 2", 2: "Sorte 3"}
 
 # Dieser Wein erscheint in /docs als Beispiel (erster Wein aus beispiele/neue_weine.csv).
@@ -21,7 +24,7 @@ BEISPIEL = {
     "hue": 1.04, "od280/od315_of_diluted_wines": 3.92, "proline": 1065.0,
 }
 
-app = FastAPI(title="Wein-API", description="Vorhersage der Weinsorte", version="0.3.0")
+app = FastAPI(title="Wein-API", description="Vorhersage der Weinsorte", version="0.4.0")
 
 # Wir laden das Modell einmal beim Start.
 modell = joblib.load("models/modell.joblib")
@@ -55,6 +58,18 @@ class Vorhersage(BaseModel):
     klasse: int
     name: str
     wahrscheinlichkeit: float
+
+
+class Erklaerung(BaseModel):
+    """Antwort von /erklaerung: Vorhersage, Erklärung und Angaben für die Evaluation."""
+
+    vorhersage: Vorhersage
+    merkmale: dict[str, float]
+    text: str
+    llm_modell: str
+    prompt_version: str
+    tokens: int | None
+    sekunden: float
 
 
 def vorhersagen(weine: list[Wein]) -> list[Vorhersage]:
@@ -109,3 +124,27 @@ def vorhersage_batch(weine: list[Wein]):
     if not weine:
         raise HTTPException(status_code=400, detail="Die Liste ist leer.")
     return vorhersagen(weine)
+
+
+def wichtigste_merkmale(wein: Wein, anzahl: int = 3) -> dict[str, float]:
+    """Die Merkmale, die für das Modell am wichtigsten sind – mit den Werten dieses Weins."""
+    werte = wein.model_dump(by_alias=True)
+    wichtigkeit = sorted(
+        zip(modell.feature_names_in_, modell.feature_importances_), key=lambda x: x[1], reverse=True
+    )
+    return {name: werte[name] for name, _ in wichtigkeit[:anzahl]}
+
+
+@app.post("/erklaerung", response_model=Erklaerung, tags=["LLM"])
+def erklaerung(wein: Wein):
+    if not llm.ist_eingerichtet():
+        # 503: Der Dienst ist gerade nicht verfügbar – hier: kein LLM eingerichtet.
+        raise HTTPException(status_code=503, detail="Kein LLM eingerichtet. Setze LLM_BASE_URL.")
+    ergebnis = vorhersagen([wein])[0]
+    merkmale = wichtigste_merkmale(wein)
+    try:
+        antwort = llm.erklaeren(ergebnis.name, ergebnis.wahrscheinlichkeit, merkmale)
+    except Exception as fehler:
+        # 502: Unsere API läuft, aber der Dienst dahinter (das LLM) antwortet nicht richtig.
+        raise HTTPException(status_code=502, detail=f"Das LLM antwortet nicht: {type(fehler).__name__}")
+    return Erklaerung(vorhersage=ergebnis, merkmale=merkmale, **antwort)

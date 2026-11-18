@@ -1,6 +1,10 @@
 # Datei: compose.yaml – in VS Code einfügen und speichern
-# compose.yaml
-# Docker Compose startet unseren MLflow-Server mit einem Befehl.
+# Docker Compose startet unseren ganzen Stack mit einem Befehl (ab Tag 18):
+#   mlflow  – Tracking-Server (seit Tag 7)
+#   api     – Wein-API mit Modell (Image aus dem Dockerfile, Tag 17)
+#   ui      – Benutzeroberfläche mit Streamlit
+#   ollama  – lokales LLM für die Erklärungen
+# Die Container finden sich gegenseitig über den Namen des Dienstes, z. B. http://api:8000.
 
 services:
   mlflow:
@@ -15,7 +19,55 @@ services:
       - mlflow-daten:/mlflow
     restart: unless-stopped
 
+  api:
+    build: .
+    image: wein-api:0.4.0
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      # Die Werte kommen aus der Datei .env. Fehlt ein Wert, gilt der Standard nach ":-".
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_MODELL: ${LLM_MODELL:-llama3.2:3b}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  ui:
+    build: ui
+    image: wein-ui:0.4.0
+    ports:
+      - "127.0.0.1:8501:8501"
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      # Die UI startet erst, wenn der HEALTHCHECK der API "healthy" meldet.
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.40.16
+    volumes:
+      # Die Modelle (mehrere GB) liegen in einem Volume. Ein neuer Container lädt sie nicht neu.
+      - ollama-modelle:/root/.ollama
+    environment:
+      # Das Modell bleibt 30 Minuten im Speicher. Die nächste Erklärung startet dann schneller.
+      OLLAMA_KEEP_ALIVE: 30m
+    healthcheck:
+      # "ollama list" fragt den Server im Container. Klappt das, ist Ollama bereit.
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    # Kein "ports": Nur die API spricht mit Ollama – über das interne Netzwerk.
+    # So gibt es auch keinen Konflikt mit einem Ollama auf deinem Rechner (Port 11434).
+    restart: unless-stopped
+
 volumes:
   mlflow-daten:
     # Fester Name: Compose nutzt dasselbe Volume wie docker run.
     name: mlflow-daten
+  ollama-modelle:
+    name: ollama-modelle
