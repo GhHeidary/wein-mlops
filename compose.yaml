@@ -1,9 +1,11 @@
 # Datei: compose.yaml – in VS Code einfügen und speichern
-# Docker Compose startet unseren ganzen Stack mit einem Befehl (ab Tag 18):
-#   mlflow  – Tracking-Server (seit Tag 7)
-#   api     – Wein-API mit Modell (Image aus dem Dockerfile, Tag 17)
-#   ui      – Benutzeroberfläche mit Streamlit
-#   ollama  – lokales LLM für die Erklärungen
+# Docker Compose startet unseren ganzen Stack mit einem Befehl (ab Tag 18, Monitoring ab Tag 19):
+#   mlflow      – Tracking-Server (seit Tag 7)
+#   api         – Wein-API mit Modell (Image aus dem Dockerfile, Tag 17)
+#   ui          – Benutzeroberfläche mit Streamlit
+#   ollama      – lokales LLM für die Erklärungen
+#   prometheus  – sammelt die Metriken der API (Tag 19)
+#   grafana     – zeigt die Metriken als Dashboard (Tag 19)
 # Die Container finden sich gegenseitig über den Namen des Dienstes, z. B. http://api:8000.
 
 services:
@@ -21,7 +23,7 @@ services:
 
   api:
     build: .
-    image: wein-api:0.4.0
+    image: wein-api:0.5.0
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -35,7 +37,7 @@ services:
 
   ui:
     build: ui
-    image: wein-ui:0.4.0
+    image: wein-ui:0.5.0
     ports:
       - "127.0.0.1:8501:8501"
     environment:
@@ -65,9 +67,44 @@ services:
     # So gibt es auch keinen Konflikt mit einem Ollama auf deinem Rechner (Port 11434).
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v3.13.5
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      # Unsere Einstellungen und Alarmregeln, nur lesbar (:ro) im Container.
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alarme.yml:/etc/prometheus/alarme.yml:ro
+      # Die gesammelten Zeitreihen überleben einen Neustart.
+      - prometheus-daten:/prometheus
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Ohne Anmeldung, mit Rechten zum Bearbeiten. Das ist nur in Ordnung,
+      # weil Grafana nur auf diesem Rechner erreichbar ist (127.0.0.1).
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+      # Startseite: unser Dashboard.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/wein-api.json
+    volumes:
+      - ./monitoring/grafana/datenquelle.yml:/etc/grafana/provisioning/datasources/datenquelle.yml:ro
+      - ./monitoring/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./monitoring/grafana/wein-api.json:/var/lib/grafana/dashboards/wein-api.json:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   mlflow-daten:
     # Fester Name: Compose nutzt dasselbe Volume wie docker run.
     name: mlflow-daten
   ollama-modelle:
     name: ollama-modelle
+  prometheus-daten:
+    name: prometheus-daten

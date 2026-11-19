@@ -1,0 +1,45 @@
+# Datei: monitoring/alarme.yml – in VS Code einfügen und speichern
+# Alarmregeln für Prometheus (ab Tag 19).
+# expr: eine Abfrage in PromQL. Ist sie wahr, wird der Alarm "pending".
+# for:  So lange muss sie wahr bleiben, dann wird der Alarm "firing".
+
+groups:
+  - name: wein-api
+    rules:
+      - alert: ApiNichtErreichbar
+        # up = 1: Prometheus erreicht die API. up = 0: nicht erreichbar.
+        expr: up{job="wein-api"} == 0
+        for: 30s
+        labels:
+          schwere: kritisch
+        annotations:
+          zusammenfassung: "Prometheus erreicht die Wein-API nicht."
+
+      - alert: VieleUngueltigeEingaben
+        # Mehr als 20 % der Vorhersage-Anfragen sind ungültig (Status 422).
+        expr: |
+          sum(rate(wein_http_anfragen_total{pfad="/vorhersage", status="422"}[1m]))
+            / sum(rate(wein_http_anfragen_total{pfad="/vorhersage"}[1m])) > 0.2
+        for: 30s
+        labels:
+          schwere: warnung
+        annotations:
+          zusammenfassung: "Mehr als 20 % ungültige Eingaben bei /vorhersage."
+
+      - alert: LlmFallback
+        # Das LLM hat in den letzten 2 Minuten mindestens einmal nicht geantwortet.
+        expr: sum(increase(wein_llm_anfragen_total{ergebnis="fallback"}[2m])) > 0
+        labels:
+          schwere: warnung
+        annotations:
+          zusammenfassung: "Das LLM antwortet nicht. Die API benutzt den Fallback."
+
+      - alert: ModellUnsicher
+        # Der Median der Sicherheit ist unter 0.8 – ein Hinweis auf neue, ungewohnte Daten (Drift).
+        expr: |
+          histogram_quantile(0.5, sum by (le) (rate(wein_vorhersage_sicherheit_bucket[2m]))) < 0.8
+        for: 1m
+        labels:
+          schwere: warnung
+        annotations:
+          zusammenfassung: "Das Modell ist unsicher. Prüfe die Eingabedaten auf Drift."

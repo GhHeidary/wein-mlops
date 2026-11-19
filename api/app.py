@@ -147,4 +147,205 @@ def erklaerung(wein: Wein):
     except Exception as fehler:
         # 502: Unsere API läuft, aber der Dienst dahinter (das LLM) antwortet nicht richtig.
         raise HTTPException(status_code=502, detail=f"Das LLM antwortet nicht: {type(fehler).__name__}")
+    return Erklaerung(vorhersage=ergebnis, merkmale=merkmale, **antwort)# Datei: api/app.py – in VS Code einfügen und speichern
+# Unsere Modell-API (Stand Tag 19): Wertebereiche, Beispiel, Fehler, Antwortformat, Batch,
+# Erklärung durch ein LLM (ab Tag 18, siehe api/llm.py)
+# und ab Tag 19 Metriken für Prometheus (siehe api/metriken.py) und ein Fallback für das LLM.
+# Start im Projektordner:  uvicorn api.app:app --reload
+
+import json
+import time
+from pathlib import Path
+
+import joblib
+import pandas as pd
+import yaml
+from fastapi import FastAPI, HTTPException, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from pydantic import BaseModel, ConfigDict, Field
+
+from api import llm
+from api import metriken as m
+
+KLASSEN = {0: "Sorte 1", 1: "Sorte 2", 2: "Sorte 3"}
+
+# Dieser Wein erscheint in /docs als Beispiel (erster Wein aus beispiele/neue_weine.csv).
+BEISPIEL = {
+    "alcohol": 14.23, "malic_acid": 1.71, "ash": 2.43, "alcalinity_of_ash": 15.6,
+    "magnesium": 127.0, "total_phenols": 2.8, "flavanoids": 3.06,
+    "nonflavanoid_phenols": 0.28, "proanthocyanins": 2.29, "color_intensity": 5.64,
+    "hue": 1.04, "od280/od315_of_diluted_wines": 3.92, "proline": 1065.0,
+}
+
+app = FastAPI(title="Wein-API", description="Vorhersage der Weinsorte", version="0.5.0")
+
+# Wir laden das Modell einmal beim Start.
+modell = joblib.load("models/modell.joblib")
+
+
+@app.middleware("http")
+async def messen(request: Request, call_next):
+    """Läuft bei JEDER Anfrage: Zeit messen, Anfrage zählen."""
+    start = time.perf_counter()
+    antwort = await call_next(request)
+    dauer = time.perf_counter() - start
+    # Wir nehmen die Vorlage des Pfads (z. B. /klassen/{nummer}), nicht /klassen/7.
+    # Sonst entsteht für jede Zahl eine eigene Zeitreihe.
+    route = request.scope.get("route")
+    pfad = route.path if route else "unbekannt"
+    m.ANFRAGEN.labels(pfad, request.method, str(antwort.status_code)).inc()
+    m.LATENZ.labels(pfad).observe(dauer)
+    return antwort
+
+
+class Wein(BaseModel):
+    """Die 13 Messwerte eines Weins. Grenzen: Trainingsdaten, nach außen gerundet."""
+
+    model_config = ConfigDict(json_schema_extra={"examples": [BEISPIEL]})
+
+    alcohol: float = Field(ge=10, le=16, description="Alkohol in %")
+    malic_acid: float = Field(ge=0.5, le=7)
+    ash: float = Field(ge=1, le=4)
+    alcalinity_of_ash: float = Field(ge=8, le=35)
+    magnesium: float = Field(ge=60, le=180)
+    total_phenols: float = Field(ge=0.5, le=4.5)
+    flavanoids: float = Field(ge=0.2, le=6)
+    nonflavanoid_phenols: float = Field(ge=0.1, le=0.8)
+    proanthocyanins: float = Field(ge=0.3, le=4)
+    color_intensity: float = Field(ge=1, le=14)
+    hue: float = Field(ge=0.4, le=2)
+    od280_od315_of_diluted_wines: float = Field(
+        ge=1, le=4.5, alias="od280/od315_of_diluted_wines"
+    )
+    proline: float = Field(ge=200, le=2000)
+
+
+class Vorhersage(BaseModel):
+    """So sieht jede Antwort einer Vorhersage aus."""
+
+    klasse: int
+    name: str
+    wahrscheinlichkeit: float
+
+
+class Erklaerung(BaseModel):
+    """Antwort von /erklaerung: Vorhersage, Erklärung und Angaben für die Evaluation."""
+
+    vorhersage: Vorhersage
+    merkmale: dict[str, float]
+    text: str
+    llm_modell: str
+    prompt_version: str
+    tokens: int | None
+    sekunden: float
+    fallback: bool = False
+
+
+def vorhersagen(weine: list[Wein]) -> list[Vorhersage]:
+    # Eine Tabelle mit einer Zeile pro Wein – mit den Spaltennamen aus dem Training.
+    daten = pd.DataFrame([w.model_dump(by_alias=True) for w in weine])
+    klassen = modell.predict(daten)
+    sicherheit = modell.predict_proba(daten).max(axis=1)
+    # Für das Monitoring: Welche Sorte, wie sicher?
+    for k, p in zip(klassen, sicherheit):
+        m.VORHERSAGEN.labels(KLASSEN[int(k)]).inc()
+        m.SICHERHEIT.observe(float(p))
+    return [
+        Vorhersage(klasse=int(k), name=KLASSEN[int(k)], wahrscheinlichkeit=round(float(p), 2))
+        for k, p in zip(klassen, sicherheit)
+    ]
+
+
+@app.get("/", tags=["Info"])
+def startseite():
+    return {"nachricht": "Die Wein-API läuft", "dokumentation": "/docs"}
+
+
+@app.get("/health", tags=["Info"])
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/metrics", tags=["Info"], include_in_schema=False)
+def metrics():
+    # Alle Metriken im Textformat von Prometheus.
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/modell", tags=["Info"])
+def modell_info():
+    params = yaml.safe_load(Path("params.yaml").read_text(encoding="utf-8"))
+    metriken = json.loads(Path("metrics.json").read_text(encoding="utf-8"))
+    return {"parameter": params["trainieren"], "metriken": metriken}
+
+
+@app.get("/klassen/{nummer}", tags=["Info"])
+def klasse(nummer: int):
+    if nummer not in KLASSEN:
+        # Eigener Fehler: Statuscode 404 und eine klare Meldung.
+        raise HTTPException(status_code=404, detail=f"Klasse {nummer} gibt es nicht. Erlaubt: 0, 1, 2")
+    return {"nummer": nummer, "name": KLASSEN[nummer]}
+
+
+@app.get("/beispiele", tags=["Info"])
+def beispiele(anzahl: int = 2):
+    weine = pd.read_csv("beispiele/neue_weine.csv").head(anzahl)
+    return weine.to_dict(orient="records")
+
+
+@app.post("/vorhersage", response_model=Vorhersage, tags=["Vorhersage"])
+def vorhersage(wein: Wein):
+    return vorhersagen([wein])[0]
+
+
+@app.post("/vorhersage/batch", response_model=list[Vorhersage], tags=["Vorhersage"])
+def vorhersage_batch(weine: list[Wein]):
+    if not weine:
+        raise HTTPException(status_code=400, detail="Die Liste ist leer.")
+    return vorhersagen(weine)
+
+
+def wichtigste_merkmale(wein: Wein, anzahl: int = 3) -> dict[str, float]:
+    """Die Merkmale, die für das Modell am wichtigsten sind – mit den Werten dieses Weins."""
+    werte = wein.model_dump(by_alias=True)
+    wichtigkeit = sorted(
+        zip(modell.feature_names_in_, modell.feature_importances_), key=lambda x: x[1], reverse=True
+    )
+    return {name: werte[name] for name, _ in wichtigkeit[:anzahl]}
+
+
+@app.post("/erklaerung", response_model=Erklaerung, tags=["LLM"])
+def erklaerung(wein: Wein):
+    if not llm.ist_eingerichtet():
+        # 503: Der Dienst ist gerade nicht verfügbar – hier: kein LLM eingerichtet.
+        raise HTTPException(status_code=503, detail="Kein LLM eingerichtet. Setze LLM_BASE_URL.")
+    ergebnis = vorhersagen([wein])[0]
+    merkmale = wichtigste_merkmale(wein)
+    start = time.perf_counter()
+    try:
+        antwort = llm.erklaeren(ergebnis.name, ergebnis.wahrscheinlichkeit, merkmale)
+    except Exception as fehler:
+        # Ab Tag 19: Fallback statt Fehler 502. Der Nutzer bekommt eine einfache Erklärung aus einer Vorlage.
+        # Wir zählen den Fehler und den Fallback – das sehen wir im Monitoring.
+        m.LLM_FEHLER.labels(type(fehler).__name__).inc()
+        m.LLM_ANFRAGEN.labels("fallback").inc()
+        namen = ", ".join(merkmale)
+        return Erklaerung(
+            vorhersage=ergebnis,
+            merkmale=merkmale,
+            text=(
+                f"Das Modell sagt {ergebnis.name} voraus (Sicherheit {ergebnis.wahrscheinlichkeit:.0%}). "
+                f"Die wichtigsten Merkmale für das Modell sind: {namen}. "
+                "Eine ausführliche Erklärung ist gerade nicht verfügbar."
+            ),
+            llm_modell="fallback",
+            prompt_version="vorlage",
+            tokens=None,
+            sekunden=round(time.perf_counter() - start, 2),
+            fallback=True,
+        )
+    m.LLM_ANFRAGEN.labels("ok").inc()
+    m.LLM_LATENZ.observe(antwort["sekunden"])
+    if antwort["tokens"]:
+        m.LLM_TOKENS.inc(antwort["tokens"])
     return Erklaerung(vorhersage=ergebnis, merkmale=merkmale, **antwort)

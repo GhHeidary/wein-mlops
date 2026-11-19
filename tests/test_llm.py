@@ -45,13 +45,17 @@ def test_erklaerung_mit_attrappe(monkeypatch):
     assert len(daten["merkmale"]) == 3
 
 
-def test_llm_kaputt_502(monkeypatch):
-    # Das LLM ist eingerichtet, antwortet aber nicht. Die API meldet Status 502.
+def test_llm_kaputt_fallback(monkeypatch):
+    # Das LLM ist eingerichtet, antwortet aber nicht.
+    # Ab Tag 19 gibt die API trotzdem eine Antwort: den Fallback aus der Vorlage.
     def kaputt(*args):
         raise ConnectionError("keine Verbindung")
 
     monkeypatch.setenv("LLM_BASE_URL", "http://nicht-benutzt")
     monkeypatch.setattr(llm, "erklaeren", kaputt)
     antwort = client.post("/erklaerung", json=WEIN)
-    assert antwort.status_code == 502
-    assert "ConnectionError" in antwort.json()["detail"]
+    assert antwort.status_code == 200
+    daten = antwort.json()
+    assert daten["fallback"] is True
+    assert daten["llm_modell"] == "fallback"
+    assert "Sorte 1" in daten["text"]

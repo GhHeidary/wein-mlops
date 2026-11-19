@@ -1,0 +1,10 @@
+# Datei: monitoring/grafana/datenquelle.yml – in VS Code einfügen und speichern
+# Grafana liest diese Datei beim Start: Prometheus ist unsere Datenquelle.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true

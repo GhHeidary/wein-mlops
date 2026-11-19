@@ -1,10 +1,10 @@
 # Datei: environment.yml – in VS Code einfügen und speichern
 # Conda-Umgebung fuer den IfaDW-Kurs MLOps (AI Engineer)
 #
-# Stand: Tag 18 (neu: openai als Client fuer Ollama und Groq)
+# Stand: Tag 19 (neu: prometheus-client fuer das Monitoring)
 # Getestet am 30.10.2026 mit conda 26.9 (Miniforge) unter Linux, Python 3.12.16.
 # DVC ergaenzt und getestet am 04.11.2026, pytest am 05.11.2026,
-# fastapi und uvicorn am 11.11.2026, httpx2 am 12.11.2026, openai am 17.11.2026.
+# fastapi und uvicorn am 11.11.2026, httpx2 am 12.11.2026, openai am 17.11.2026, prometheus-client am 18.11.2026.
 #
 # Anlegen:        conda env create -f environment.yml
 # Aktivieren:     conda activate mlops-kurs
@@ -46,6 +46,8 @@ dependencies:
       - httpx2==2.16.0
       # Client fuer LLMs mit OpenAI-Schnittstelle (ab Tag 18): Ollama, Groq
       - openai==3.52.0
+      # Metriken fuer Prometheus (ab Tag 19)
+      - prometheus-client==0.26.0
 
 variables:
   # MLflow sendet sonst anonyme Nutzungsdaten an den Hersteller.

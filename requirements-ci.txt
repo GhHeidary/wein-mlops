@@ -10,3 +10,5 @@ fastapi==0.162.0
 httpx2==2.16.0
 # Ab Tag 18: Client für LLMs mit OpenAI-Schnittstelle (Ollama, Groq).
 openai==3.52.0
+# Ab Tag 19: Metriken für Prometheus.
+prometheus-client==0.26.0

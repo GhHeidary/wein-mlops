@@ -1,0 +1,9 @@
+# Datei: monitoring/grafana/dashboards.yml – in VS Code einfügen und speichern
+# Grafana lädt beim Start alle Dashboards aus diesem Ordner im Container.
+apiVersion: 1
+providers:
+  - name: wein-mlops
+    folder: Wein-MLOps
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
